@@ -61,11 +61,13 @@ try {
 
   $extract = Join-Path $tmp.FullName "x"
   Expand-Archive -Path $zipPath -DestinationPath $extract -Force
-  $srcExe = Join-Path $extract "${bin}.exe"
+  # The archive contains a binary named like "localmaurice_windows_amd64.exe"
+  $assetName = "${bin}_${os}_${arch}.exe"
+  $srcExe = Join-Path $extract $assetName
 
   # Verify binary was extracted
   if (!(Test-Path $srcExe)) {
-    throw "Binary '${bin}.exe' not found in archive"
+    throw "Binary '$assetName' not found in archive"
   }
 
   if ([string]::IsNullOrEmpty($BinDir)) {
