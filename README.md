@@ -686,35 +686,3 @@ Load:
 launchctl load ~/Library/LaunchAgents/com.agentmaurice.localmaurice.plist
 launchctl start com.agentmaurice.localmaurice
 ```
-
-## Contributing
-
-LocalMaurice is part of the [AgentMaurice chatserver repository](https://github.com/agentmaurice/chatserver).
-
-To contribute:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests: `go test ./localmaurice/...`
-5. Submit a pull request
-
-## License
-
-[MIT License](LICENSE)
-
-## Support
-
-- **Documentation**: https://docs.agentmaurice.ai
-- **Issues**: https://github.com/agentmaurice/chatserver/issues
-- **Discussions**: https://github.com/agentmaurice/chatserver/discussions
-- **Discord**: https://discord.gg/agentmaurice
-
-## Credits
-
-Built with:
-- [Model Context Protocol (MCP)](https://modelcontextprotocol.io)
-- [LiveKit](https://livekit.io)
-- [Eclipse Paho MQTT](https://www.eclipse.org/paho/)
-- [Cobra](https://cobra.dev)
-- [Viper](https://github.com/spf13/viper)
-- [Zap Logger](https://github.com/uber-go/zap)
