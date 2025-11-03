@@ -25,9 +25,9 @@ EOF
 
 dl() {
   if command -v curl >/dev/null 2>&1; then
-    curl -fL "$1" -o "$2"
+    curl -fsSL -H "Accept: application/vnd.github+json" -A "localmaurice-installer" "$1" -o "$2"
   elif command -v wget >/dev/null 2>&1; then
-    wget -O "$2" "$1"
+    wget --header="Accept: application/vnd.github+json" --user-agent="localmaurice-installer" -O "$2" "$1"
   else
     echo "Error: curl or wget is required" >&2
     exit 1
@@ -77,8 +77,27 @@ main() {
   ext=".tar.gz"
 
   if [ -z "$VERSION" ]; then
-    VERSION=$(dl "https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest" /dev/stdout | sed -n 's/.*"tag_name":"\([^"]*\)".*/\1/p' | head -n1)
-    if [ -z "$VERSION" ]; then echo "Error: cannot determine latest release tag" >&2; exit 1; fi
+    echo "Fetching latest release version..."
+    tmpjson=$(mktemp)
+    dl "https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest" "$tmpjson"
+
+    # Try multiple parsing methods
+    if command -v jq >/dev/null 2>&1; then
+      VERSION=$(jq -r '.tag_name' "$tmpjson" 2>/dev/null)
+    else
+      # Fallback to grep/sed - handle multiline JSON
+      VERSION=$(grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' "$tmpjson" | head -n1 | sed 's/.*"\([^"]*\)".*/\1/')
+    fi
+
+    rm -f "$tmpjson"
+
+    if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+      echo "Error: cannot determine latest release tag" >&2
+      echo "Please check https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases" >&2
+      exit 1
+    fi
+
+    echo "Latest version: $VERSION"
   fi
 
   base="https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${VERSION}"
