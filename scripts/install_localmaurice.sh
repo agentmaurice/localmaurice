@@ -121,11 +121,12 @@ main() {
   fi
 
   tar -xzf "$tmpdir/pkg${ext}" -C "$tmpdir"
-  src="$tmpdir/${BIN_NAME}"
+  # The archive contains a binary named like "localmaurice_linux_amd64"
+  src="$tmpdir/${asset}"
 
   # Verify binary was extracted
   if [ ! -f "$src" ]; then
-    echo "Error: binary '$BIN_NAME' not found in archive" >&2
+    echo "Error: binary '$asset' not found in archive" >&2
     exit 1
   fi
 
