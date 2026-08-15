@@ -1,7 +1,6 @@
 Param(
   [string]$Version = "",
-  [string]$BinDir = "",
-  [switch]$Verify
+  [string]$BinDir = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -45,39 +44,35 @@ try {
   Write-Host "Downloading $urlAsset"
   Download $urlAsset $zipPath
 
-  if ($Verify.IsPresent) {
-    $sumPath = Join-Path $tmp.FullName "sha256sums.txt"
-    try { Download $urlSums $sumPath } catch {}
-    if (Test-Path $sumPath) {
-      $hash = (Get-FileHash -Algorithm SHA256 $zipPath).Hash.ToLower()
-      $name = $asset
-      $match = Select-String -Path $sumPath -Pattern $name
-      if ($match) {
-        $expected = ($match.Line -split ' ')[0].ToLower()
-        if ($expected -ne $hash) { throw "Checksum mismatch for $asset" }
-      }
-    }
-  }
+  $sumPath = Join-Path $tmp.FullName "sha256sums.txt"
+  Download $urlSums $sumPath
+  $hash = (Get-FileHash -Algorithm SHA256 $zipPath).Hash.ToLower()
+  $match = Select-String -Path $sumPath -Pattern [regex]::Escape($asset) | Select-Object -First 1
+  if (-not $match) { throw "Checksum not found for $asset" }
+  $expected = ($match.Line -split '\s+')[0].ToLower()
+  if ($expected -ne $hash) { throw "Checksum mismatch for $asset" }
 
   $extract = Join-Path $tmp.FullName "x"
   Expand-Archive -Path $zipPath -DestinationPath $extract -Force
-  # The archive contains a binary named like "localmaurice_windows_amd64.exe"
-  $assetName = "${bin}_${os}_${arch}.exe"
-  $srcExe = Join-Path $extract $assetName
-
-  # Verify binary was extracted
-  if (!(Test-Path $srcExe)) {
-    throw "Binary '$assetName' not found in archive"
+  $candidates = @(
+    (Join-Path $extract "$bin.exe"),
+    (Join-Path $extract "${bin}_${os}_${arch}.exe")
+  )
+  $srcExe = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+  if (-not $srcExe) {
+    $srcExe = Get-ChildItem -Path $extract -Recurse -File -Filter "*.exe" |
+      Where-Object { $_.Name -eq "$bin.exe" -or $_.Name -eq "${bin}_${os}_${arch}.exe" } |
+      Select-Object -First 1 -ExpandProperty FullName
   }
+  if (-not $srcExe) { throw "Binary '$bin.exe' not found in archive" }
 
   if ([string]::IsNullOrEmpty($BinDir)) {
-    $homeBin = Join-Path $env:USERPROFILE ".local\bin"
-    $BinDir = $homeBin
+    $BinDir = Join-Path $env:USERPROFILE ".local\bin"
   }
   if (!(Test-Path $BinDir)) { New-Item -ItemType Directory -Path $BinDir | Out-Null }
 
   Copy-Item $srcExe (Join-Path $BinDir "$bin.exe") -Force
-  Write-Host "Installed to $BinDir\$bin.exe"
+  Write-Host "Installed $bin $Version to $BinDir\$bin.exe"
   Write-Host "Ensure $BinDir is in your PATH."
 }
 catch {

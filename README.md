@@ -35,9 +35,31 @@ LocalMaurice is a lightweight client application that connects your local enviro
 
 ## Installation
 
-### Download Pre-built Binaries
+### Quick install (macOS / Linux)
 
-Download the latest release for your platform from [GitHub Releases](https://github.com/agentmaurice/localmaurice/releases):
+```bash
+curl -fsSL https://raw.githubusercontent.com/agentmaurice/localmaurice/main/scripts/install_localmaurice.sh | bash
+```
+
+The script detects your OS and architecture, downloads the latest release, verifies the SHA-256 checksum, and installs `localmaurice` to `/usr/local/bin` or `~/.local/bin`.
+
+```bash
+# specific version
+curl -fsSL https://raw.githubusercontent.com/agentmaurice/localmaurice/main/scripts/install_localmaurice.sh | bash -s -- -v v1.12.0
+
+# custom install directory
+curl -fsSL https://raw.githubusercontent.com/agentmaurice/localmaurice/main/scripts/install_localmaurice.sh | bash -s -- -b "$HOME/bin"
+```
+
+### Windows
+
+```powershell
+iwr https://raw.githubusercontent.com/agentmaurice/localmaurice/main/scripts/install_localmaurice.ps1 -UseBasicParsing | iex
+```
+
+### Manual download
+
+Download a platform archive from [GitHub Releases](https://github.com/agentmaurice/localmaurice/releases) if you prefer not to use the installer:
 
 **Linux (amd64)**
 ```bash
@@ -79,14 +101,14 @@ Pre-built binaries from [GitHub Releases](https://github.com/agentmaurice/localm
 
 ### Update
 
-AgentMaurice Edge uses the same update gateway as the CLI:
+After the first install, AgentMaurice Edge uses the same update gateway as the CLI:
 
 ```bash
 localmaurice update check
 localmaurice update install --yes
 ```
 
-The commands read `https://get.agentmaurice.app/products/localmaurice/latest.json`, select the archive for the current platform, verify SHA-256, then replace the running binary.
+You can also re-run the install script to replace the binary. The commands read `https://get.agentmaurice.app/products/localmaurice/latest.json`, select the archive for the current platform, verify SHA-256, then replace the running binary.
 
 
 ## Quick Start
@@ -605,13 +627,14 @@ transport: "livekit"
 ### Updating Binary
 
 ```bash
-# Download latest release
-wget https://github.com/agentmaurice/localmaurice/releases/latest/download/localmaurice_linux_amd64.tar.gz
-tar -xzf localmaurice_linux_amd64.tar.gz
-sudo mv localmaurice /usr/local/bin/
+localmaurice update check
+localmaurice update install --yes
 
-# Restart service
-sudo systemctl restart localmaurice  # If using systemd
+# or re-run the installer
+curl -fsSL https://raw.githubusercontent.com/agentmaurice/localmaurice/main/scripts/install_localmaurice.sh | bash
+
+# Restart service if you run Edge as systemd
+sudo systemctl restart localmaurice
 ```
 
 ### Updating MCP Servers
