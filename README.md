@@ -77,6 +77,18 @@ sudo mv localmaurice /usr/local/bin/
 
 Pre-built binaries from [GitHub Releases](https://github.com/agentmaurice/localmaurice/releases) are the supported install path. AgentMaurice is proprietary software; source is not published on GitHub.
 
+### Update
+
+AgentMaurice Edge uses the same update gateway as the CLI:
+
+```bash
+localmaurice update check
+localmaurice update install --yes
+```
+
+The commands read `https://get.agentmaurice.app/products/localmaurice/latest.json`, select the archive for the current platform, verify SHA-256, then replace the running binary.
+
+
 ## Quick Start
 
 ### 1. Get Your API Key
