@@ -73,13 +73,9 @@ sudo mv localmaurice /usr/local/bin/
 # Extract and add to PATH
 ```
 
-### Build from Source
+### Supported distribution
 
-```bash
-git clone https://github.com/agentmaurice/chatserver.git
-cd chatserver
-go build -o localmaurice ./cmd/localmaurice
-```
+Pre-built binaries from [GitHub Releases](https://github.com/agentmaurice/localmaurice/releases) are the supported install path. AgentMaurice is proprietary software; source is not published on GitHub.
 
 ## Quick Start
 
@@ -249,7 +245,8 @@ transport: "mqtt"
 
 mqtt:
   enabled: true
-  broker: "tcp://mqtt.maurice.ai:1883"
+  # broker is optional. JoinDeployment returns transports.mqtt.broker_tcp/ws
+  # and LocalMaurice uses that endpoint unless you override it here.
   qos: 1                # Quality of Service: 0, 1, or 2
   keep_alive: 60        # Keep alive interval in seconds
   client_id: ""         # Optional: auto-generated if empty
