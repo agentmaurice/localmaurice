@@ -1,0 +1,43 @@
+# Copy this file to config.yaml and keep secrets out of version control.
+api_url: "https://your-maurice-instance.com"
+api_key: ""
+local_name: "my-laptop"
+local_description: "Local MCP bridge"
+transport: "livekit"
+sandbox_profile: "strict"
+
+# Opt-in MCP 2026-07-28 client. The legacy client remains the safe default.
+mcp_modern_client_enabled: false
+
+log:
+  level: "info"
+  encoding: "console"
+  output_file: ""
+  max_size_mb: 100
+  max_backups: 3
+  max_age_days: 7
+  compress: true
+
+stdio_servers:
+  - name: "filesystem"
+    config:
+      command: "npx"
+      arguments:
+        - "-y"
+        - "@modelcontextprotocol/server-filesystem"
+        - "/home/user/workspace"
+      env: []
+
+# The section name is retained for compatibility and accepts both transports.
+sse_servers:
+  - name: "remote-tools"
+    config:
+      url: "https://tools.example.com/mcp"
+      transport: "http"
+      headers:
+        - "Authorization: Bearer replace-me"
+
+mcp_shell:
+  enabled: false
+
+local_skills: []

@@ -2,13 +2,13 @@
 
 **Bridge your local tools and MCP servers to AgentMaurice**
 
-LocalMaurice is a lightweight client application that connects your local environment to the AgentMaurice cloud platform. It enables AgentMaurice to discover and use local MCP (Model Context Protocol) servers, execute local tools, and run custom skills—all while maintaining complete control over what gets exposed.
+LocalMaurice is a lightweight client application that connects your local environment to an AgentMaurice control plane. It enables AgentMaurice to discover and use local MCP (Model Context Protocol) servers and declarative local capabilities bound to those servers, while maintaining complete control over what gets exposed.
 
 ## Features
 
 ### 🔌 **MCP Server Integration**
 - **STDIO Servers**: Run Node.js, Python, or binary MCP servers locally
-- **SSE Servers**: Connect to MCP servers via Server-Sent Events
+- **Remote Servers**: Connect with Streamable HTTP or legacy Server-Sent Events (SSE)
 - **Auto-discovery**: Automatically register available tools with AgentMaurice
 - **Hot reload**: Changes to MCP servers are detected and updated
 
@@ -23,7 +23,7 @@ LocalMaurice is a lightweight client application that connects your local enviro
 - Automatic reconnection and failover
 
 ### 📦 **Local Skills**
-- Define custom skills with Python, Node.js, or Go
+- Publish declarative capabilities bound to MCP server tools
 - Hot-reload skill manifests during development
 - Environment variable injection and runtime configuration
 
@@ -110,7 +110,6 @@ localmaurice update install --yes
 
 You can also re-run the install script to replace the binary. The commands read `https://get.agentmaurice.app/products/localmaurice/latest.json`, select the archive for the current platform, verify SHA-256, then replace the running binary.
 
-
 ## Quick Start
 
 ### 1. Get Your API Key
@@ -127,7 +126,7 @@ mauricecli apikey create --name "My LocalMaurice Client"
 
 ### 2. Create Configuration File
 
-Create a `config.yaml` file:
+Copy [`config.example.yaml`](config.example.yaml) to `config.yaml`, then set the deployment URL, API key, and local name. The minimal shape is:
 
 ```yaml
 # API Configuration
@@ -137,6 +136,10 @@ local_name: "my-laptop"  # Unique identifier for this client
 
 # Transport: "livekit" (default) or "mqtt"
 transport: "livekit"
+sandbox_profile: "strict"
+
+# Opt-in MCP 2026-07-28 client. Keep false until the deployment is ready.
+mcp_modern_client_enabled: false
 
 # Logging
 log:
@@ -152,39 +155,24 @@ log:
 stdio_servers:
   - name: "filesystem"
     config:
-      executable_path: "/usr/local/bin/mcp-server-filesystem"
-      arguments: ["--root", "/home/user/workspace"]
+      command: "npx"
+      arguments: ["-y", "@modelcontextprotocol/server-filesystem", "/home/user/workspace"]
       env:
         - "NODE_ENV=production"
-      server_type: "node"
 
-  - name: "github"
-    config:
-      executable_path: "npx"
-      arguments: ["-y", "@modelcontextprotocol/server-github"]
-      env:
-        - "GITHUB_TOKEN=ghp_your_token_here"
-      server_type: "node"
-
+# The section name is retained for compatibility and accepts both transports.
 sse_servers:
   - name: "remote-tools"
     config:
-      server_url: "http://localhost:3000/sse"
-      timeout: 30
+      url: "https://tools.example.com/mcp"
+      transport: "http"
+      headers:
+        - "Authorization: Bearer replace-me"
 
 # Optional: Built-in Shell MCP
 mcp_shell:
   enabled: false  # Set to true to enable shell commands
 
-# Optional: Local Skills
-local_skills:
-  - name: "code-analyzer"
-    manifest_url: "file:///home/user/skills/analyzer/skill.yaml"
-    entrypoint: "main.py"
-    language: "python"
-    active: true
-    env:
-      - "PYTHONPATH=/home/user/skills"
 ```
 
 ### 3. Run LocalMaurice
@@ -202,6 +190,15 @@ export LOCALMAURICE_LOCAL_NAME="my-laptop"
 
 localmaurice serve
 ```
+
+To opt in to the MCP 2026-07-28 client after validating your servers, set either the LocalMaurice-specific variable or the product-wide gate:
+
+```bash
+export LOCALMAURICE_MCP_MODERN_CLIENT_ENABLED="true"
+# MCP_MODERN_CLIENT_ENABLED, when set, takes precedence.
+```
+
+Set the value back to `false` to roll back to the legacy client path. The modern path is disabled by default.
 
 ## Configuration
 
@@ -311,38 +308,44 @@ mqtt:
 stdio_servers:
   - name: "filesystem"
     config:
-      executable_path: "npx"
+      command: "npx"
       arguments: ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
-      server_type: "node"
       env:
         - "NODE_OPTIONS=--max-old-space-size=4096"
 
   - name: "python-tools"
     config:
-      executable_path: "python3"
-      arguments: ["-m", "mcp_server_tools"]
-      server_type: "python"
+      command: "uvx"
+      arguments: ["mcp-server-fetch"]
       env:
         - "PYTHONUNBUFFERED=1"
 
   - name: "custom-binary"
     config:
-      executable_path: "/usr/local/bin/my-mcp-server"
-      arguments: ["--mode", "stdio"]
-      server_type: "other"
+      command: "docker"
+      arguments: ["run", "--rm", "example/mcp-server:1.0.0"]
 ```
 
-### SSE Servers (HTTP Server-Sent Events)
+The supported `command` launchers are `npx`, `uvx`, `go`, and `docker`.
+
+### Remote Servers (Streamable HTTP or legacy SSE)
+
+The historical `sse_servers` key is retained in the configuration schema. Set `transport` to `http` for modern Streamable HTTP or to `sse` for a legacy SSE endpoint.
 
 ```yaml
 sse_servers:
-  - name: "cloud-service"
+  - name: "modern-cloud-service"
     config:
-      server_url: "https://api.example.com/mcp/sse"
-      timeout: 30
+      url: "https://api.example.com/mcp"
+      transport: "http"
       headers:
         - "Authorization: Bearer token123"
         - "X-Custom-Header: value"
+
+  - name: "legacy-cloud-service"
+    config:
+      url: "https://api.example.com/sse"
+      transport: "sse"
 ```
 
 ### Built-in Shell MCP
@@ -365,7 +368,7 @@ When enabled, AgentMaurice can execute shell commands on your local machine. All
 
 ## Local Skills
 
-Skills are custom tools written in Python, Node.js, or Go that extend AgentMaurice's capabilities.
+Local skills are declarative capability manifests. To execute work, bind a capability to a tool exposed by one of the configured MCP servers; LocalMaurice does not directly execute Python, Node.js, or Go skill runtimes.
 
 ### Skill Configuration
 
@@ -429,15 +432,13 @@ Connect your IDE, local files, and development tools to AgentMaurice:
 stdio_servers:
   - name: "filesystem"
     config:
-      executable_path: "npx"
+      command: "npx"
       arguments: ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
-      server_type: "node"
 
   - name: "git"
     config:
-      executable_path: "npx"
+      command: "npx"
       arguments: ["-y", "@modelcontextprotocol/server-git"]
-      server_type: "node"
 ```
 
 Now AgentMaurice can read your code, analyze it, and suggest improvements.
@@ -469,18 +470,16 @@ Connect your personal documents and services:
 stdio_servers:
   - name: "google-drive"
     config:
-      executable_path: "npx"
+      command: "npx"
       arguments: ["-y", "@modelcontextprotocol/server-gdrive"]
-      server_type: "node"
       env:
         - "GOOGLE_CLIENT_ID=your_client_id"
         - "GOOGLE_CLIENT_SECRET=your_secret"
 
   - name: "calendar"
     config:
-      executable_path: "python3"
-      arguments: ["-m", "mcp_google_calendar"]
-      server_type: "python"
+      command: "uvx"
+      arguments: ["mcp-google-calendar"]
 ```
 
 ### 4. CI/CD Integration
@@ -530,7 +529,7 @@ Solution:
 **Issue: "MCP server failed to start"**
 ```
 Solution:
-1. Verify executable_path is correct
+1. Verify the configured command is installed and on PATH
 2. Check executable has execute permissions
 3. Ensure all dependencies are installed (npm, python, etc.)
 4. Check server logs for errors
